@@ -10,7 +10,8 @@ public class Plugin {
 
 	public static enum PLUGIN_SUPPORT {
 
-		ALGORITHM("sort.algorithm"), COMPARATOR("sort.algorithm.comparator");
+		ALGORITHM("sort.algorithm"), ALGO_COMPARATOR("sort.algorithm.comparator"),
+		MERGE_COMPARATOR("merge.algorithm.comparator");
 
 		private final String key;
 
@@ -39,13 +40,16 @@ public class Plugin {
 		config.load(new FileInputStream(cfile));
 	}
 
-	public static Object getPlugin(PLUGIN_SUPPORT ps)
-			throws ClassNotFoundException, InstantiationException,
-			IllegalAccessException {
+	public static Object getPlugin(PLUGIN_SUPPORT ps){
 		String className = config.getProperty(ps.getKey());
-		ClassLoader.getSystemClassLoader().loadClass(className);
-		Class c = Class.forName(className);
-		return c.newInstance();
+		try {
+			ClassLoader.getSystemClassLoader().loadClass(className);
+			Class c = Class.forName(className);
+			return c.newInstance();
+		} catch (Throwable e){
+			e.printStackTrace();
+			throw new RuntimeException("could not initialise plugin : "+ps.key);
+		}
 	}
 
 }

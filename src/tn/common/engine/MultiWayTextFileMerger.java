@@ -8,6 +8,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.BitSet;
 import java.util.Comparator;
+import java.util.Locale;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.logging.FileHandler;
@@ -15,8 +16,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
+import tn.common.Configuration;
 import tn.common.Plugin;
 import tn.common.Plugin.PLUGIN_SUPPORT;
+import tn.common.data.MergeComparator;
 import tn.common.fs.TextFileChannelImpl;
 import tn.common.fs.TextFileDataSource;
 
@@ -64,7 +67,7 @@ public class MultiWayTextFileMerger implements
 
 		@SuppressWarnings("unchecked")
 		final Comparator<String> utfComp = (Comparator<String>) Plugin
-				.getPlugin(PLUGIN_SUPPORT.COMPARATOR);
+				.getPlugin(PLUGIN_SUPPORT.MERGE_COMPARATOR);
 
 		final Logger MERGE_LOGGER = Logger.getLogger("MERGE_LOGGER");
 		MERGE_LOGGER.setLevel(Level.ALL);
@@ -96,7 +99,7 @@ public class MultiWayTextFileMerger implements
 		// all the file channels.
 		int mWay = sortspace.list().length; // M - way merge -- can give the
 											// control to calling routine
-		int chanelBufferSize = Math.round((avlMemInBytes / (mWay + 2/*
+		int chanelBufferSize = Math.round((getAvailableMemory() / (mWay + 2/*
 																	 * 2 equal
 																	 * output
 																	 * buffer
@@ -144,9 +147,15 @@ public class MultiWayTextFileMerger implements
 		// maintain a bit vector to see if the values are changing
 		BitSet noChangeVector = new BitSet(mWay); // initially false
 
+		Configuration config = Configuration.getInstance();
+		Locale locale = new Locale((String) config.get(Configuration.IN_LOCALE));
+		String charSet = (String) config.get(Configuration.IN_CHAR_SET);
+		MergeComparator mcomp = MergeComparator.getInstance();
+		
+		
 		for (File schunk : sortspace.listFiles(sortedChunkFilter)) {
 			TextFileChannelImpl sfc = TextFileChannelImpl.createInstance(
-					schunk, getComparator(locale), chanelBufferSize, locale,
+					schunk, mcomp, chanelBufferSize, locale,
 					charSet, logspace);
 			MERGE_LOGGER.log(Level.INFO, "Loading into sort buffer");
 			try {
@@ -230,6 +239,10 @@ public class MultiWayTextFileMerger implements
 				// it
 				bwriter.newLine();
 			}
+	}
+	
+	private long getAvailableMemory(){
+		return Runtime.getRuntime().freeMemory();
 	}
 
 }

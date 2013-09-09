@@ -94,33 +94,7 @@ public class SortMaster {
 														 */, locale, UTF_8);
 	}
 
-	public static Comparator<String> getComparator(final Locale locale) {
-		Comparator<String> utfComp = new Comparator<String>() {
-
-			private final Collator col = Collator.getInstance(locale);
-
-			@Override
-			public int compare(String s1, String s2) {
-				int ls1 = s1.length();
-				int ls2 = s2.length();
-				int max = ls1 <= ls2 ? ls1 : ls2;
-				for (int i = 0; i < max; i++) {
-					int r = col.compare(String.valueOf(s1.charAt(i)),
-							String.valueOf(s2.charAt(i)));
-					if (r != 0)
-						return r;
-				}
-				if (ls1 == ls2)
-					return 0;
-				if (ls1 > ls2)
-					return 1;
-				else
-					return -1;
-			}
-		};
-		return utfComp;
-	}
-
+	
 	private static void sortChunks(File chunkspace, File sortspace) {
 		// in a distributed system the federator will distribute a chunk
 		// and we will distribute jobs to separate individual machines.
@@ -176,8 +150,6 @@ public class SortMaster {
 				sb.delete(0, (sb.length() - 1));
 				sb = null;
 
-				// BentleySedgewickSort algo =
-				// BentleySedgewickSort.createInstance();
 				Sortable<String> algo = (Sortable<String>) Plugin
 						.getPlugin(PLUGIN_SUPPORT.ALGORITHM);
 				algo.sort(cin, getComparator(locale));
