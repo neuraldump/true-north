@@ -21,11 +21,15 @@ import java.text.StringCharacterIterator;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Locale;
+import java.util.Random;
 import java.util.Vector;
 
+import tn.algo.Strategy;
 import tn.common.Plugin;
 import tn.common.Plugin.PLUGIN_SUPPORT;
+import tn.common.data.EnumerableTextSource;
 import tn.common.data.Sortable;
+import tn.common.fs.Chunk;
 import tn.common.fs.TextFileChannelImpl;
 
 /**
@@ -40,7 +44,7 @@ public class SortMaster {
 	private static final String INPUT_FILE = "input.txt";
 	private static final String OUTPUT_FILE = "output.txt";
 	private static final String WORK_SPACE = "D://development//workspace//workbench//src//tmp";
-	static int CHUNK_SIZE_IN_BYTES = 64000;
+	public static int CHUNK_SIZE_IN_BYTES = 64000;
 
 	public static void main(String[] args) {
 
@@ -109,80 +113,47 @@ public class SortMaster {
 		// go through the chunks - sort them using configured
 		// algorithm
 		for (File chunk : chunkspace.listFiles(chunkFileFiler)) {
-			FileChannel fc = null;
-			BufferedWriter bwriter = null;
+			sort(sortspace, chunk);
+		}
+	}
+
+
+	private static void sort(File sortspace, File logSpace, File chunk/*to sort*/) {
+		BufferedWriter bwriter = null;
+		try {
+
+			Chunk toSort = Chunk.createReadWriteChunk(chunk, logSpace, "TODO guuid id");
+			@SuppressWarnings("unchecked")
+			Strategy<EnumerableTextSource> algo = (Strategy<EnumerableTextSource>) Plugin
+					.getPlugin(PLUGIN_SUPPORT.ALGORITHM);
+			algo.run(toSort);
+
+			File sorted = new File(sortspace, chunk.getName() + ".sorted");
+			bwriter = new BufferedWriter(new FileWriter(sorted));
+			for (String svalue : cin) {
+				bwriter.write(svalue.toCharArray());
+				bwriter.newLine();
+			}
+
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		} catch (InstantiationException e) {
+			e.printStackTrace();
+		} catch (IllegalAccessException e) {
+			e.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+
 			try {
-
-				fc = new RandomAccessFile(chunk.getPath(), "rw").getChannel();
-				MappedByteBuffer mbf = fc.map(MapMode.READ_WRITE, 0, fc.size());
-				mbf.load();
-
-				Locale locale = new Locale("en", "US"); // TODO from user --
-														// depending on data set
-				BreakIterator wordIterator = BreakIterator
-						.getWordInstance(locale);
-
-				// CharsetEncoder utf16LE =
-				// Charset.forName("UTF-16LE").newEncoder();
-				CharsetDecoder utf8 = Charset.forName(UTF_8).newDecoder();
-				CharBuffer decoded = utf8.decode(mbf);
-
-				// StringBuffer sb = new StringBuffer(decoded);
-				// opting for single thread faster buffer
-				StringBuilder sb = new StringBuilder(decoded);
-
-				// because StringBuilder copies the supplies sequence - purge it
-				// decoded.clear(); //this does not actually delete the data it
-				// seems :(
-				decoded = null;
-				mbf = null;
-
-				String[] cin = extractWords(sb.toString(), wordIterator); // consider
-																			// a
-																			// scenario
-																			// where
-																			// this
-																			// cannot
-																			// be
-																			// held
-																			// in
-																			// memory
-				sb.delete(0, (sb.length() - 1));
-				sb = null;
-
-				Sortable<String> algo = (Sortable<String>) Plugin
-						.getPlugin(PLUGIN_SUPPORT.ALGORITHM);
-				algo.sort(cin, getComparator(locale));
-
-				File sorted = new File(sortspace, chunk.getName() + ".sorted");
-				bwriter = new BufferedWriter(new FileWriter(sorted));
-				for (String svalue : cin) {
-					bwriter.write(svalue.toCharArray());
-					bwriter.newLine();
-				}
-
-			} catch (FileNotFoundException e) {
-				e.printStackTrace();
+				if (bwriter != null)
+					bwriter.close();
 			} catch (IOException e) {
 				e.printStackTrace();
-			} catch (ClassNotFoundException e) {
-				e.printStackTrace();
-			} catch (InstantiationException e) {
-				e.printStackTrace();
-			} catch (IllegalAccessException e) {
-				e.printStackTrace();
-			} catch (Exception e) {
-				e.printStackTrace();
-			} finally {
-
-				try {
-					if (fc != null)
-						fc.close();
-					if (bwriter != null)
-						bwriter.close();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
 			}
 		}
 	}
@@ -277,26 +248,7 @@ public class SortMaster {
 		}
 	}
 
-	public static String[] extractWords(String target,
-			BreakIterator wordIterator) {
-
-		int initSize = (CHUNK_SIZE_IN_BYTES > Integer.MAX_VALUE) ? Integer.MAX_VALUE
-				: CHUNK_SIZE_IN_BYTES;
-		ArrayList<String> tmp = new ArrayList<String>(initSize);
-		wordIterator.setText(new StringCharacterIterator(target));
-		int start = wordIterator.first();
-		int end = wordIterator.next();
-
-		while (end != BreakIterator.DONE) {
-			String word = target.substring(start, end);
-			if (Character.isLetterOrDigit(word.charAt(0))) {
-				tmp.add(word);
-			}
-			start = end;
-			end = wordIterator.next();
-		}
-		return tmp.toArray(new String[tmp.size()]);
-	}
+	
 
 	// (trial - a simple but expensive) sort keys along with associated file
 	// channels in intermediate (in memory) sort space

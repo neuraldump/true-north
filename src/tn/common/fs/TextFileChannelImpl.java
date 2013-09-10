@@ -28,7 +28,7 @@ import java.util.logging.SimpleFormatter;
  * 
  */
 
-public class TextFileChannelImpl {
+public class TextFileChannelImpl implements TextFileChannel{
 
 	private final FileChannel fc;
 
@@ -485,6 +485,11 @@ public class TextFileChannelImpl {
 	public String toString() {
 		return "[id:" + channelId + "][EOF:" + eof + "]" + "[is last block:"
 				+ lastBlock + "]" + "[buffer pointer:" + cbp + "]";
+	}
+
+	@Override
+	public FileChannel getFileChannel() {
+		return fc;
 	}
 
 }

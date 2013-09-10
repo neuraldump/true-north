@@ -2,6 +2,7 @@ package tn.common.fs;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 
 /**
  * An interface to define the methods available to treat a text {@link File} as
@@ -69,4 +70,6 @@ public interface TextFileChannel {
 	public void close() throws IOException;
 
 	public long size() throws IOException;
+	
+	public FileChannel getFileChannel();
 }
