@@ -15,6 +15,7 @@ public class Configuration extends Properties{
 	
 	public static final String IN_CHAR_SET="input.charset";
 	public static final String IN_ENCODING = "input.encoding";
+	public static final String IN_LANGUAGE = "input.language";
 	public static final String IN_LOCALE = "input.locale";
 	
 	public static final String OUT_CHAR_SET="output.charset";

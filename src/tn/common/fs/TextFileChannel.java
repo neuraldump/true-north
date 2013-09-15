@@ -15,6 +15,27 @@ import java.nio.channels.FileChannel;
 public interface TextFileChannel {
 
 	/**
+	 * Open for reading only. Invoking any of the write methods of the resulting object will 
+	 * cause an IOException to be thrown. 
+	 * */
+	public static final String READ = "r";
+	/**
+	 * Open for reading and writing. If the file does not already exist then an attempt will 
+	 * be made to create it.
+	 */
+	public static final String READ_WRITE = "rw";
+	/**
+	 * Open for reading and writing, as with "rw", and also require that every update to the 
+	 * file's content or metadata be written synchronously to the underlying storage device.
+	 */
+	public static final String READ_WRITE_S = "rws";
+	/**
+	 * Open for reading and writing, as with "rw", and also require that every update to the 
+	 * file's content be written synchronously to the underlying storage device. 
+	 */
+	public static final String READ_WRITE_D = "rwd";
+	
+	/**
 	 * retrieves the next word (key) in this file channel. <br>
 	 * It will alter the buffer position
 	 * 

@@ -68,18 +68,22 @@ public class TextFileChannelImpl implements TextFileChannel{
 
 	private String charSet = null; // default
 
+	private String mode = null;
+	
 	private Comparator<String> comp = null;
 
 	private Logger LOGGER = null;
+	
 
 	// required by the sorted to park the last yanked one
 	private String lastKey = null;
 	private String lastKeyCache = null;
 
-	private TextFileChannelImpl(FileChannel fc, Comparator<String> comp,
+	private TextFileChannelImpl(FileChannel fc,String mapMode, Comparator<String> comp,
 			String channelID, long blockSize, Locale locale, String charSet,
 			Logger logger) {
 		this.fc = fc;
+		this.mode = mapMode;
 		this.channelId = channelID;
 		this.blockSize = blockSize;
 		this.retrieveSize = Math.round((blockSize / 4)); // default
@@ -112,7 +116,7 @@ public class TextFileChannelImpl implements TextFileChannel{
 
 		final Logger logger = setupLogger(logSpace, file.getName());
 
-		return new TextFileChannelImpl(fc, comp, file.getName(), blockSize, locale,
+		return new TextFileChannelImpl(fc,TextFileChannel.READ,comp, file.getName(), blockSize, locale,
 				"UTF-16BE", logger);
 	}
 
@@ -137,7 +141,7 @@ public class TextFileChannelImpl implements TextFileChannel{
 		return logger;
 	}
 
-	public static TextFileChannelImpl createInstance(File file,MapMode mode,
+	public static TextFileChannelImpl createInstance(File file,String mode,
 			Comparator<String> comp, long blockSize, Locale locale,
 			String charSet, File logSpace) {
 		if (file == null) {
@@ -146,14 +150,14 @@ public class TextFileChannelImpl implements TextFileChannel{
 
 		FileChannel fc = null;
 		try {
-			fc = new RandomAccessFile(file,"rw").getChannel();
+			fc = new RandomAccessFile(file,mode).getChannel();
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
 
 		final Logger logger = setupLogger(logSpace, file.getName());
 
-		return new TextFileChannelImpl(fc, comp, file.getName(), blockSize, locale,
+		return new TextFileChannelImpl(fc,mode, comp, file.getName(), blockSize, locale,
 				charSet, logger);
 	}
 
@@ -186,7 +190,7 @@ public class TextFileChannelImpl implements TextFileChannel{
 			fetchSize = fc.size() - fp;
 			lastBlock = true;
 		}
-		MappedByteBuffer mbf = fc.map(MapMode.READ_ONLY, fp, fetchSize);
+		MappedByteBuffer mbf = fc.map(MapMode.READ_WRITE, fp, fetchSize);
 		cbfa = Charset.forName("UTF-8").decode(mbf).array(); // TODO - -get
 																// UTF-8/16 this
 																// from a user

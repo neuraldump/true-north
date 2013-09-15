@@ -22,6 +22,7 @@ import tn.common.Configuration;
 import tn.common.Plugin;
 import tn.common.Plugin.PLUGIN_SUPPORT;
 import tn.common.data.MergeComparator;
+import tn.common.fs.TextFileChannel;
 import tn.common.fs.TextFileChannelImpl;
 import tn.common.fs.TextFileDataSource;
 
@@ -157,7 +158,7 @@ public class MultiWayTextFileMerger implements
 		
 		for (File schunk : sortspace.listFiles(sortedChunkFilter)) {
 			TextFileChannelImpl sfc = TextFileChannelImpl.createInstance(
-					schunk,MapMode.READ_WRITE, mcomp, chanelBufferSize, locale,
+					schunk,TextFileChannel.READ_WRITE, mcomp, chanelBufferSize, locale,
 					charSet, logspace);
 			MERGE_LOGGER.log(Level.INFO, "Loading into sort buffer");
 			try {

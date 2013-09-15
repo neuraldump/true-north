@@ -20,8 +20,8 @@ import tn.common.data.Sortable;
 public class Chunk extends TextFileDataSource implements Processable {
 
 	private Chunk(File source, String id, String name, String charSet,
-			String encoding,String locale,File logSpace) {
-		super(source, id, name, charSet, encoding, locale, logSpace);
+			String encoding,String language,String locale,File logSpace) {
+		super(source, id, name, charSet, encoding,language, locale, logSpace);
 	}
 
 	
@@ -38,7 +38,8 @@ public class Chunk extends TextFileDataSource implements Processable {
 		String charSet = config.getProperty(Configuration.IN_CHAR_SET);
 		String encoding = config.getProperty(Configuration.IN_ENCODING);
 		String locale = config.getProperty(Configuration.IN_LOCALE);
-		return new Chunk(source, id, source.getName(), charSet, encoding, locale, logSpace);
+		String language = config.getProperty(Configuration.IN_LANGUAGE);
+		return new Chunk(source, id, source.getName(), charSet, encoding,language, locale, logSpace);
 	}
 	
 	@Override

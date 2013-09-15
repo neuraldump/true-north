@@ -45,9 +45,12 @@ public abstract class TextFileDataSource implements TextFileChannel,
 	
 	private String encoding;
 	
+	private String language;
+	
 	private boolean isSorted;
 	
 	private String[] sorted = null;
+	
 	
 	//TODO support for multi-locale data source is under investigation.
 	private Locale locale;
@@ -56,13 +59,14 @@ public abstract class TextFileDataSource implements TextFileChannel,
 	
 
 	public TextFileDataSource(File file, String id, String name,
-			String charSet, String encoding,String locale,File logSpace) {
+			String charSet, String encoding,String language,String locale,File logSpace) {
 		this.file = file;
 		this.id=id;
 		this.name=name;
 		this.charSet=charSet;
+		this.language = language;
 		this.encoding=encoding;
-		this.locale=new Locale(locale);
+		this.locale=new Locale(language,locale);
 		this.logSpace=logSpace;
 	}
 
@@ -93,38 +97,27 @@ public abstract class TextFileDataSource implements TextFileChannel,
 			Configuration config = Configuration.getInstance();
 			long blockSize = Long.valueOf(config.getProperty(Configuration.SYS_FS_BLOCK_SIZE));
 			
-			fc = TextFileChannelImpl.createInstance(file,MapMode.READ_WRITE,getComparator() , blockSize, locale, charSet, logSpace);
+			fc = TextFileChannelImpl.createInstance(file,TextFileChannel.READ_WRITE,getComparator() , blockSize, locale, charSet, logSpace);
 			MappedByteBuffer mbf = fc.getFileChannel().map(MapMode.READ_WRITE, 0, fc.size());
 			mbf.load();
 	
-			Locale locale = new Locale("en", "US"); // TODO from user --
-													// depending on data set
 			BreakIterator wordIterator = BreakIterator
 					.getWordInstance(locale);
 	
-			// CharsetEncoder utf16LE =
-			// Charset.forName("UTF-16LE").newEncoder();
-			CharsetDecoder utf8 = Charset.forName(getCharSet()).newDecoder();
-			CharBuffer decoded = utf8.decode(mbf);
+			CharsetDecoder decoder = Charset.forName(getCharSet()).newDecoder();
+			CharBuffer decoded = decoder.decode(mbf);
 	
-			// StringBuffer sb = new StringBuffer(decoded);
-			// opting for single thread faster buffer
 			StringBuilder sb = new StringBuilder(decoded);
 	
-			// because StringBuilder copies the supplies sequence - purge it
-			// decoded.clear(); //this does not actually delete the data it
-			// seems :(
 			decoded = null;
 			mbf = null;
 			
-			//TODO handle larger than memory size
 			String[] cin = extractWords(sb.toString(), wordIterator); 
-			sb.delete(0, (sb.length() - 1));
+			//sb.delete(0, (sb.length() - 1));
 			sb = null;
 		
 			return cin;
 			
-		//TODO need to throw back one custom data abstraction exception
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
