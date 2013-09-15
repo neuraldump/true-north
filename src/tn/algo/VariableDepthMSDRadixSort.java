@@ -48,6 +48,7 @@ public class VariableDepthMSDRadixSort implements
 	public void run(EnumerableTextSource input) {
 		String[] asArray = input.asArray();
 		BentleyAndSedgwickSort(asArray, 0, (asArray.length - 1), 0);
+		input.setSorted(asArray);
 	}
 
 	// one of the improvements to Bentley and Sedgewick proposed algorithm is

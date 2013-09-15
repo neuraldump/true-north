@@ -8,6 +8,8 @@ import java.util.Properties;
 
 public class Plugin {
 
+	private static Configuration config = null;
+	
 	public static enum PLUGIN_SUPPORT {
 
 		ALGORITHM("sort.algorithm"), ALGO_COMPARATOR("sort.algorithm.comparator"),
@@ -24,23 +26,12 @@ public class Plugin {
 		}
 	};
 
-	private static Properties config = null;
-
-	public static void initialize(File cfile) throws FileNotFoundException,
-			IOException {
-
-		if (config != null)
-			return;
-
-		if (cfile == null || "".equals(cfile)) {
-			throw new IllegalArgumentException("@param cfile cannot be null");
-		}
-
-		config = new Properties();
-		config.load(new FileInputStream(cfile));
-	}
-
 	public static Object getPlugin(PLUGIN_SUPPORT ps){
+		
+		if(config == null){
+			config = Configuration.getInstance();
+		}
+		
 		String className = config.getProperty(ps.getKey());
 		try {
 			ClassLoader.getSystemClassLoader().loadClass(className);

@@ -137,7 +137,7 @@ public class TextFileChannelImpl implements TextFileChannel{
 		return logger;
 	}
 
-	public static TextFileChannelImpl createInstance(File file,
+	public static TextFileChannelImpl createInstance(File file,MapMode mode,
 			Comparator<String> comp, long blockSize, Locale locale,
 			String charSet, File logSpace) {
 		if (file == null) {
@@ -146,7 +146,7 @@ public class TextFileChannelImpl implements TextFileChannel{
 
 		FileChannel fc = null;
 		try {
-			fc = new RandomAccessFile(file, "r").getChannel();
+			fc = new RandomAccessFile(file,"rw").getChannel();
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}

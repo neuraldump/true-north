@@ -30,7 +30,7 @@ import tn.common.engine.Distributable;
  * @author Senthu Sivasambu
  * 
  */
-public abstract  class TextFileDataSource implements TextFileChannel,
+public abstract class TextFileDataSource implements TextFileChannel,
 		EnumerableTextSource, Distributable<File, File>, Sortable<String> {
 
 	private TextFileChannel fc = null;
@@ -44,6 +44,10 @@ public abstract  class TextFileDataSource implements TextFileChannel,
 	private String charSet;
 	
 	private String encoding;
+	
+	private boolean isSorted;
+	
+	private String[] sorted = null;
 	
 	//TODO support for multi-locale data source is under investigation.
 	private Locale locale;
@@ -87,9 +91,9 @@ public abstract  class TextFileDataSource implements TextFileChannel,
 		try{
 			
 			Configuration config = Configuration.getInstance();
-			int blockSize = Integer.valueOf(config.getProperty(Configuration.SYS_FS_BLOCK_SIZE));
+			long blockSize = Long.valueOf(config.getProperty(Configuration.SYS_FS_BLOCK_SIZE));
 			
-			fc = TextFileChannelImpl.createInstance(file,getComparator() , blockSize, locale, charSet, logSpace);
+			fc = TextFileChannelImpl.createInstance(file,MapMode.READ_WRITE,getComparator() , blockSize, locale, charSet, logSpace);
 			MappedByteBuffer mbf = fc.getFileChannel().map(MapMode.READ_WRITE, 0, fc.size());
 			mbf.load();
 	
@@ -216,8 +220,11 @@ public abstract  class TextFileDataSource implements TextFileChannel,
 	private String[] extractWords(String target,
 			BreakIterator wordIterator) {
 
-		int initSize = (SortMaster.CHUNK_SIZE_IN_BYTES > Integer.MAX_VALUE) ? Integer.MAX_VALUE
-				: SortMaster.CHUNK_SIZE_IN_BYTES;
+		Configuration config = Configuration.getInstance();
+		int chunkSize = Integer.valueOf(config.getProperty(Configuration.SYS_CHUNK_SIZE_IN_BYTES));
+		
+		int initSize = (chunkSize > Integer.MAX_VALUE) ? Integer.MAX_VALUE
+				: chunkSize;
 		ArrayList<String> tmp = new ArrayList<String>(initSize);
 		wordIterator.setText(new StringCharacterIterator(target));
 		int start = wordIterator.first();
@@ -270,8 +277,22 @@ public abstract  class TextFileDataSource implements TextFileChannel,
 	}
 	
 	@Override
-	public abstract Comparator<String> getComparator();
+	public boolean isSorted() {
+		return isSorted;
+	}
 
+	@Override
+	public String[] getSorted() {
+		return sorted;
+	}
+
+	@Override
+	public void setSorted(String[] sorted){
+		this.sorted = sorted;
+		isSorted = true;
+	}
 	
+	@Override
+	public abstract Comparator<String> getComparator();
 
 }

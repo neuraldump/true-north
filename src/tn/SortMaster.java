@@ -7,6 +7,7 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.MappedByteBuffer;
@@ -22,17 +23,24 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Locale;
 import java.util.Random;
+import java.util.UUID;
 import java.util.Vector;
 
 import tn.algo.Strategy;
+import tn.algo.VariableDepthMSDRadixSort;
+import tn.common.Configuration;
 import tn.common.Plugin;
 import tn.common.Plugin.PLUGIN_SUPPORT;
 import tn.common.data.EnumerableTextSource;
 import tn.common.data.Sortable;
+import tn.common.engine.MultiWayTextFileMerger;
+import tn.common.engine.MultiwayMerger;
 import tn.common.fs.Chunk;
 import tn.common.fs.TextFileChannelImpl;
+import tn.common.fs.TextFileDataSource;
 
 /**
+ * Main: Sorting starts here
  * 
  * @author Senthu Sivasambu
  * 
@@ -40,68 +48,61 @@ import tn.common.fs.TextFileChannelImpl;
 
 public class SortMaster {
 
-	private static final String UTF_8 = "UTF-8";
-	private static final String INPUT_FILE = "input.txt";
-	private static final String OUTPUT_FILE = "output.txt";
-	private static final String WORK_SPACE = "D://development//workspace//workbench//src//tmp";
-	public static int CHUNK_SIZE_IN_BYTES = 64000;
+	private static final String SORTSPACE = "sortspace";
+	private static final String CHUNKSPACE = "chunkspace";
+
 
 	public static void main(String[] args) {
 
-		File workspace = new File(WORK_SPACE);
-		File input = new File(WORK_SPACE + File.separator + INPUT_FILE);
-		File output = new File(WORK_SPACE + File.separator + OUTPUT_FILE);
-
-		// create log directory
-		File logspace = new File(WORK_SPACE + File.separator + "logs");
-		logspace.mkdir();
-
+		if(args == null || args.length < 1){
+			throw new IllegalArgumentException("requires path to configuration directory");
+		}
+		
+		String cString = args[0];
+		File cFile = new File(cString);
+		if(!cFile.canRead()){
+			throw new IllegalStateException("Permission denied to access configuration file : "+cFile.getPath());
+		}
+		Configuration.initialise(cFile);
+		Configuration config = Configuration.getInstance();
+		
+		String worspacePath = config.getProperty(Configuration.SYS_WORK_SPACE);
+		String inputFileName = config.getProperty(Configuration.SYS_INPUT_FILE);
+		String outputFileName = config.getProperty(Configuration.SYS_OUTPUT_FILE);
+		File workspace = new File(worspacePath);
 		if (!workspace.isDirectory()) {
 			throw new IllegalArgumentException(workspace.getPath()
 					+ " must be directory");
 		}
 
-		checkPermission(workspace);
-		checkPermission(input);
+		//expected file path for input and output files.
+		File input = new File(worspacePath + File.separator + inputFileName);
+		File output = new File(worspacePath + File.separator + outputFileName);
+		
+		checkRWPermission(workspace);
+		checkRWPermission(input);
 
-		// TODO get the property file location as single argument and the rest
-		// from prop
-		// do the permission checks and other as same above
-		try {
-			Plugin.initialize(new File(
-					"D://development//workspace//workbench//src//sorter//src//com//config//sorter.properties"));
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-		// create required directory structure
-		File chunkspace = new File(workspace, "chunkspace");
+		// create required sub-directory structure
+		File logspace = new File(worspacePath + File.separator + "logs");
+		logspace.mkdir();
+		
+		File chunkspace = new File(workspace, CHUNKSPACE);
 		chunkspace.mkdir();
 
-		File sortspace = new File(workspace, "sortspace");
+		File sortspace = new File(workspace, SORTSPACE);
 		sortspace.mkdir();
 
-		// chunk up files
 		chunkUpFile(input, chunkspace);
 
-		sortChunks(chunkspace, sortspace);
+		sortChunks(chunkspace, sortspace,logspace);
 
-		long availMem = Runtime.getRuntime().freeMemory();
-		Locale locale = new Locale("en", "US");
-		mergeChunks(sortspace, output, logspace, 128000/*
-														 * a percentage of
-														 * availMem - prop file
-														 * can have a tuning
-														 * value
-														 */, locale, UTF_8);
+		MultiwayMerger<TextFileDataSource> merger = MultiWayTextFileMerger.createInstance(sortspace, output, logspace);
+		merger.merge(null/*TODO - an orchestraor will assign the chunks to be merged*/);
 	}
 
 	
-	private static void sortChunks(File chunkspace, File sortspace) {
-		// in a distributed system the federator will distribute a chunk
-		// and we will distribute jobs to separate individual machines.
+	private static void sortChunks(File chunkSpace, File sortSpace,File logSpace) {
+		
 		FileFilter chunkFileFiler = new FileFilter() {
 
 			@Override
@@ -112,8 +113,8 @@ public class SortMaster {
 
 		// go through the chunks - sort them using configured
 		// algorithm
-		for (File chunk : chunkspace.listFiles(chunkFileFiler)) {
-			sort(sortspace, chunk);
+		for (File chunk : chunkSpace.listFiles(chunkFileFiler)) {
+			sort(sortSpace, chunkSpace, chunk);
 		}
 	}
 
@@ -121,8 +122,13 @@ public class SortMaster {
 	private static void sort(File sortspace, File logSpace, File chunk/*to sort*/) {
 		BufferedWriter bwriter = null;
 		try {
-
-			Chunk toSort = Chunk.createReadWriteChunk(chunk, logSpace, "TODO guuid id");
+			
+			//this chunk is likely to have been distributed to a host by the federator - use
+			//that info in deriving id
+			InetAddress localHost = InetAddress.getLocalHost();
+			String uuidString = localHost.getHostName()+"-"+localHost.getHostAddress()+"-"+chunk.getName();
+			//UUID.fromString(uuidString).toString();
+			Chunk toSort = Chunk.createReadWriteChunk(chunk, logSpace,uuidString);
 			@SuppressWarnings("unchecked")
 			Strategy<EnumerableTextSource> algo = (Strategy<EnumerableTextSource>) Plugin
 					.getPlugin(PLUGIN_SUPPORT.ALGORITHM);
@@ -130,7 +136,7 @@ public class SortMaster {
 
 			File sorted = new File(sortspace, chunk.getName() + ".sorted");
 			bwriter = new BufferedWriter(new FileWriter(sorted));
-			for (String svalue : cin) {
+			for (String svalue : toSort.getSorted()) {
 				bwriter.write(svalue.toCharArray());
 				bwriter.newLine();
 			}
@@ -138,12 +144,6 @@ public class SortMaster {
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
-		} catch (InstantiationException e) {
-			e.printStackTrace();
-		} catch (IllegalAccessException e) {
 			e.printStackTrace();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -162,12 +162,15 @@ public class SortMaster {
 		FileChannel fc = null;
 		FileChannel cfc = null;
 
+		Configuration config = Configuration.getInstance();
+		long chunkSize = Integer.valueOf(config.getProperty(Configuration.SYS_CHUNK_SIZE_IN_BYTES));
+		
 		try {
 
 			fc = new RandomAccessFile(input.getPath(), "r").getChannel();
-			for (long fp = 0, cid = 0; fp < fc.size(); fp += (CHUNK_SIZE_IN_BYTES), cid++) {
-				long blockSize = CHUNK_SIZE_IN_BYTES;
-				if ((fp + CHUNK_SIZE_IN_BYTES) >= fc.size()) {
+			for (long fp = 0, cid = 0; fp < fc.size(); fp += (chunkSize), cid++) {
+				long blockSize = chunkSize;
+				if ((fp + chunkSize) >= fc.size()) {
 					blockSize = fc.size() - fp;
 				}
 
@@ -186,9 +189,9 @@ public class SortMaster {
 						&& j > 0; j--, i++) {
 					buffer[i] = mbf.get((mbf.capacity() - j));
 				}
-				CharsetDecoder utf8 = Charset.forName(UTF_8).newDecoder();
-				CharsetEncoder utf8enco = Charset.forName(UTF_8).newEncoder();
-				CharBuffer decoded = utf8.decode(ByteBuffer.wrap(buffer));
+				CharsetDecoder utf8deco = Charset.forName(config.getProperty(Configuration.IN_ENCODING)).newDecoder();
+				CharsetEncoder utf8enco = Charset.forName(config.getProperty(Configuration.OUT_ENCODING)).newEncoder();
+				CharBuffer decoded = utf8deco.decode(ByteBuffer.wrap(buffer));
 				char[] charArray = decoded.array();
 				// is last character a space character? then break right there..
 				int codePointAt = Character.codePointAt(charArray,
@@ -241,14 +244,12 @@ public class SortMaster {
 		}
 	}
 
-	private static void checkPermission(File file) {
+	private static void checkRWPermission(File file) {
 		if (!file.canRead() || !file.canWrite()) {
 			throw new IllegalStateException(file.getPath()
 					+ " must have r+w permission..");
 		}
 	}
-
-	
 
 	// (trial - a simple but expensive) sort keys along with associated file
 	// channels in intermediate (in memory) sort space

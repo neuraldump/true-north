@@ -6,6 +6,8 @@ import java.io.FileFilter;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel.MapMode;
 import java.util.BitSet;
 import java.util.Comparator;
 import java.util.Locale;
@@ -45,7 +47,7 @@ public class MultiWayTextFileMerger implements
 		this.logspace = logspace;
 	}
 
-	public MultiwayMerger<TextFileDataSource> createInstance(File sortspace,
+	public static MultiwayMerger<TextFileDataSource> createInstance(File sortspace,
 			File out, File logspace) {
 		return new MultiWayTextFileMerger(sortspace, out, logspace);
 	}
@@ -155,7 +157,7 @@ public class MultiWayTextFileMerger implements
 		
 		for (File schunk : sortspace.listFiles(sortedChunkFilter)) {
 			TextFileChannelImpl sfc = TextFileChannelImpl.createInstance(
-					schunk, mcomp, chanelBufferSize, locale,
+					schunk,MapMode.READ_WRITE, mcomp, chanelBufferSize, locale,
 					charSet, logspace);
 			MERGE_LOGGER.log(Level.INFO, "Loading into sort buffer");
 			try {

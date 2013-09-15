@@ -1,8 +1,7 @@
 package tn;
 
-import tn.algo.VariableDepthMSDRadixSort;
 
-public class TernaryPartitioner {
+public class TernaryPartitionerDriver {
 
 	public static void main(String[] args) {
 
@@ -56,7 +55,7 @@ public class TernaryPartitioner {
 		args = new String[] { "AA", "AA", "AAA" };
 
 		args = new String[] { "A", "A", "A" };
-		VariableDepthMSDRadixSort.createInstance().sort(args, null);
+		//VariableDepthMSDRadixSort.createInstance().run(EnumerableTextSource)
 		for (String s : args)
 			System.out.print(s + ",");
 	}

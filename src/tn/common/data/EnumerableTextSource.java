@@ -9,4 +9,10 @@ public interface EnumerableTextSource extends DataSource {
 	public String getEncoding();
 
 	public String delimiter();
+	
+	public boolean isSorted();
+	
+	public String[] getSorted();
+	
+	public void setSorted(String[] sorted);
 }
